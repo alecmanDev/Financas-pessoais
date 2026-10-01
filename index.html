@@ -169,6 +169,38 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 .notif-banner h4{margin:0 0 6px; font-size:13px; font-weight:700;}
 .notif-banner .line{font-size:13px; line-height:1.5;}
 .notif-banner .closeX{position:absolute; top:10px; right:10px; background:rgba(0,0,0,.15); border:none; color:#1a1607; width:26px; height:26px; border-radius:50%; font-size:15px; cursor:pointer; line-height:1;}
+
+.backup-text{width:100%; min-height:160px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px; color:var(--text); font-size:11px; font-family:monospace; resize:vertical;}
+
+/* ---- tablet ---- */
+@media (min-width:700px){
+  .wrap{max-width:720px; padding:28px 32px 110px;}
+  header h1{font-size:25px;}
+  .overlay{align-items:center; padding:20px;}
+  .sheet{max-width:500px; border-radius:20px; max-height:85vh; border-bottom:1px solid var(--line);}
+  .tabs{padding:5px;}
+  .tab{padding:10px 6px; font-size:13px;}
+  .chart-block{padding:20px;}
+  .fab{width:58px; height:58px; font-size:28px;}
+}
+
+/* ---- desktop ---- */
+@media (min-width:1000px){
+  .wrap{max-width:1040px; padding:36px 40px 110px;}
+  header{margin-bottom:26px;}
+  header h1{font-size:28px;}
+  .cards{gap:14px; margin-bottom:26px;}
+  .card{padding:18px 20px;}
+  #chartsView{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start;}
+  #chartsView .chart-block{margin-bottom:0;}
+  #filterBox{grid-column:1/-1;}
+  .tabs{max-width:720px;}
+  .list{max-width:720px;}
+  #tabChartBox{max-width:720px;}
+}
+@media (min-width:1280px){
+  .wrap{max-width:1180px;}
+}
 </style>
 </head>
 <body>
@@ -232,6 +264,10 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
       <div class="backup-row">
         <button id="btnExport">💾 Exportar backup</button>
         <button id="btnImport">📥 Importar backup</button>
+      </div>
+      <div class="backup-row">
+        <button id="btnExportText">📋 Copiar backup (texto)</button>
+        <button id="btnImportText">📋 Colar backup (texto)</button>
       </div>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
     </div>
@@ -608,6 +644,26 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
       <div class="actions">
         <button class="cancel" id="btnCancelCover">Cancelar</button>
         <button class="add" id="btnConfirmCover">Confirmar</button>
+      </div>
+    </div>
+    <div id="exportTextSheet" style="display:none;">
+      <h2>Backup em texto</h2>
+      <p class="calc-note" style="margin-bottom:10px;">Toque no texto, selecione tudo e copie. Cole numa mensagem pra você mesmo, num e-mail ou direto no "Colar backup" do outro app.</p>
+      <textarea class="backup-text" id="exportTextArea" readonly></textarea>
+      <div class="calc-note" id="exportTextMsg" style="margin:8px 0 0;"></div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="cancel" id="btnCloseExportText">Fechar</button>
+        <button class="add" id="btnCopyExportText">Copiar</button>
+      </div>
+    </div>
+    <div id="importTextSheet" style="display:none;">
+      <h2>Colar backup</h2>
+      <p class="calc-note" style="margin-bottom:10px;">Cole aqui o texto copiado do backup.</p>
+      <textarea class="backup-text" id="importTextArea" placeholder="Cole o backup aqui..."></textarea>
+      <div class="calc-note" id="importTextError" style="display:none; color:var(--coral); margin:8px 0 0;"></div>
+      <div class="actions" style="margin-top:12px;">
+        <button class="cancel" id="btnCloseImportText">Cancelar</button>
+        <button class="add" id="btnApplyImportText">Importar</button>
       </div>
     </div>
     <div id="confirmSheet" style="display:none;">
@@ -1241,7 +1297,7 @@ document.getElementById('catChips').addEventListener('click', e=>{
   syncChipSelection();
 });
 function hideAllSheets(){
-  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','thirdPartySheet','debtSheet'].forEach(id=>document.getElementById(id).style.display='none');
+  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','thirdPartySheet','debtSheet','exportTextSheet','importTextSheet'].forEach(id=>document.getElementById(id).style.display='none');
 }
 function openSheet(){
   hideAllSheets();
@@ -1432,23 +1488,62 @@ document.getElementById('btnSalvarMeta').addEventListener('click', ()=>{
   render();
 });
 
+function withTimeout(promise, ms){
+  return Promise.race([
+    promise,
+    new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')), ms))
+  ]);
+}
+function backupFileName(){
+  const d = new Date();
+  return `backup-orcamento-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+}
+function downloadViaBlob(json, fname){
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function applyImportedBackup(parsed){
+  data = {
+    entries: Array.isArray(parsed.entries) ? parsed.entries : [],
+    assets: Array.isArray(parsed.assets) ? parsed.assets : [],
+    goals: Array.isArray(parsed.goals) ? parsed.goals : [],
+    recurring: Array.isArray(parsed.recurring) ? parsed.recurring : [],
+    cards: Array.isArray(parsed.cards) ? parsed.cards : [],
+    thirdParty: Array.isArray(parsed.thirdParty) ? parsed.thirdParty : [],
+    debts: Array.isArray(parsed.debts) ? parsed.debts : [],
+    notifDismissed: Array.isArray(parsed.notifDismissed) ? parsed.notifDismissed : [],
+    categories: parsed.categories && typeof parsed.categories==='object' ? parsed.categories : { receita: DEFAULT_CATS.receita.slice(), fixa: DEFAULT_CATS.fixa.slice(), variavel: DEFAULT_CATS.variavel.slice() },
+    investGoalPct: typeof parsed.investGoalPct === 'number' ? parsed.investGoalPct : 0,
+    categoryColors: parsed.categoryColors && typeof parsed.categoryColors === 'object' ? parsed.categoryColors : {}
+  };
+  data.entries.forEach(e=>{ if(!e.ym) e.ym = ymNow(); if(!e.date) e.date = e.ym+'-01'; });
+  data.assets.forEach(a=>{ if(!a.ym) a.ym = ymNow(); });
+  data.recurring.forEach(r=>{ if(!r.skipped) r.skipped = []; });
+  save(); render();
+}
+
 document.getElementById('btnExport').addEventListener('click', async ()=>{
   const json = JSON.stringify(data, null, 2);
-  const d = new Date();
-  const fname = `backup-orcamento-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  const fname = backupFileName();
   try{
     if(typeof claude !== 'undefined' && claude.use){
-      const downloads = await claude.use('downloads');
-      if(downloads){ await downloads.save({ filename: fname, data: json }); return; }
+      const downloads = await withTimeout(claude.use('downloads'), 2500);
+      if(downloads){ await withTimeout(downloads.save({ filename: fname, data: json }), 4000); return; }
     }
-    const blob = new Blob([json], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = fname;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    downloadViaBlob(json, fname);
   }catch(e){
-    alert('Não foi possível salvar o backup aqui. Tente novamente em instantes.');
+    try{ downloadViaBlob(json, fname); }
+    catch(e2){
+      hideAllSheets();
+      document.getElementById('exportTextArea').value = json;
+      document.getElementById('exportTextMsg').textContent = 'O download não funcionou aqui — use copiar o texto abaixo.';
+      document.getElementById('exportTextSheet').style.display = 'block';
+      overlay.classList.add('show');
+    }
   }
 });
 
@@ -1463,25 +1558,7 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
     try{
       const parsed = JSON.parse(reader.result);
       if(!parsed || typeof parsed !== 'object') throw new Error('formato inválido');
-      askConfirm('Isso vai substituir os dados atuais pelo backup importado. Continuar?', ()=>{
-        data = {
-          entries: Array.isArray(parsed.entries) ? parsed.entries : [],
-          assets: Array.isArray(parsed.assets) ? parsed.assets : [],
-          goals: Array.isArray(parsed.goals) ? parsed.goals : [],
-          recurring: Array.isArray(parsed.recurring) ? parsed.recurring : [],
-          cards: Array.isArray(parsed.cards) ? parsed.cards : [],
-          thirdParty: Array.isArray(parsed.thirdParty) ? parsed.thirdParty : [],
-          debts: Array.isArray(parsed.debts) ? parsed.debts : [],
-          notifDismissed: Array.isArray(parsed.notifDismissed) ? parsed.notifDismissed : [],
-          categories: parsed.categories && typeof parsed.categories==='object' ? parsed.categories : { receita: DEFAULT_CATS.receita.slice(), fixa: DEFAULT_CATS.fixa.slice(), variavel: DEFAULT_CATS.variavel.slice() },
-          investGoalPct: typeof parsed.investGoalPct === 'number' ? parsed.investGoalPct : 0,
-          categoryColors: parsed.categoryColors && typeof parsed.categoryColors === 'object' ? parsed.categoryColors : {}
-        };
-        data.entries.forEach(e=>{ if(!e.ym) e.ym = ymNow(); if(!e.date) e.date = e.ym+'-01'; });
-        data.assets.forEach(a=>{ if(!a.ym) a.ym = ymNow(); });
-        data.recurring.forEach(r=>{ if(!r.skipped) r.skipped = []; });
-        save(); render();
-      });
+      askConfirm('Isso vai substituir os dados atuais pelo backup importado. Continuar?', ()=>applyImportedBackup(parsed));
     }catch(err){
       alert('Arquivo de backup inválido.');
     }
@@ -2415,6 +2492,61 @@ document.getElementById('btnCloseNotif').addEventListener('click', ()=>{
   });
   save();
   document.getElementById('notifBanner').style.display = 'none';
+});
+
+document.getElementById('btnExportText').addEventListener('click', ()=>{
+  hideAllSheets();
+  document.getElementById('exportTextArea').value = JSON.stringify(data, null, 2);
+  document.getElementById('exportTextMsg').textContent = '';
+  document.getElementById('exportTextSheet').style.display = 'block';
+  overlay.classList.add('show');
+  setTimeout(()=>{
+    const ta = document.getElementById('exportTextArea');
+    ta.focus(); ta.select();
+  }, 50);
+});
+document.getElementById('btnCloseExportText').addEventListener('click', ()=>overlay.classList.remove('show'));
+document.getElementById('btnCopyExportText').addEventListener('click', async ()=>{
+  const ta = document.getElementById('exportTextArea');
+  ta.focus(); ta.select();
+  const msg = document.getElementById('exportTextMsg');
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(ta.value);
+      msg.textContent = 'Copiado! Agora é só colar onde quiser.';
+      return;
+    }
+    throw new Error('sem clipboard API');
+  }catch(e){
+    try{
+      document.execCommand('copy');
+      msg.textContent = 'Copiado! Agora é só colar onde quiser.';
+    }catch(e2){
+      msg.textContent = 'Não deu pra copiar automaticamente — toque no texto, selecione tudo e copie manualmente.';
+    }
+  }
+});
+
+document.getElementById('btnImportText').addEventListener('click', ()=>{
+  hideAllSheets();
+  document.getElementById('importTextArea').value = '';
+  document.getElementById('importTextError').style.display = 'none';
+  document.getElementById('importTextSheet').style.display = 'block';
+  overlay.classList.add('show');
+});
+document.getElementById('btnCloseImportText').addEventListener('click', ()=>overlay.classList.remove('show'));
+document.getElementById('btnApplyImportText').addEventListener('click', ()=>{
+  const raw = document.getElementById('importTextArea').value.trim();
+  const errEl = document.getElementById('importTextError');
+  try{
+    const parsed = JSON.parse(raw);
+    if(!parsed || typeof parsed !== 'object') throw new Error('formato inválido');
+    errEl.style.display = 'none';
+    askConfirm('Isso vai substituir os dados atuais pelo backup colado. Continuar?', ()=>applyImportedBackup(parsed));
+  }catch(err){
+    errEl.textContent = 'Esse texto não é um backup válido. Confira se colou tudo certinho.';
+    errEl.style.display = 'block';
+  }
 });
 
 render();
