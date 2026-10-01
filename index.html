@@ -270,6 +270,10 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
         <button id="btnImportText">📋 Colar backup (texto)</button>
       </div>
       <input type="file" id="importFile" accept="application/json,.json" style="display:none;">
+      <div class="backup-row">
+        <button id="btnSyncOpen">🔄 Sincronizar entre dispositivos</button>
+      </div>
+      <div class="calc-note" id="syncStatusLine" style="margin-top:2px;"></div>
     </div>
     <div id="geralExtra"></div>
     <div id="chartsView" style="display:none;">
@@ -666,6 +670,33 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
         <button class="add" id="btnApplyImportText">Importar</button>
       </div>
     </div>
+    <div id="syncSheet" style="display:none;">
+      <h2>🔄 Sincronizar entre dispositivos</h2>
+      <div id="syncSetupForm">
+        <p class="calc-note" style="margin-bottom:16px;">Neste aparelho, toque em "Criar código" na primeira vez. Depois, no outro aparelho (ou de volta nesse, se desconectar), use "Já tenho um código" com o código gerado aqui.</p>
+        <button type="button" class="btn-ajustar" id="btnCreateCode" style="width:100%; margin-bottom:18px; padding:13px 0;">✨ Criar código novo</button>
+        <div class="field" style="margin-bottom:10px;">
+          <label>Já tenho um código</label>
+          <input id="syncCodigoInput" placeholder="Ex.: AB12CD" style="text-transform:uppercase;">
+        </div>
+        <div class="calc-note" id="syncError" style="display:none; color:var(--coral); margin-bottom:10px;"></div>
+        <div class="actions">
+          <button class="cancel" id="btnCloseSync">Fechar</button>
+          <button class="add" id="btnConnectSync">Conectar com esse código</button>
+        </div>
+      </div>
+      <div id="syncConnectedView" style="display:none;">
+        <div style="text-align:center; margin-bottom:16px;">
+          <div class="calc-note" style="margin-bottom:6px;">Seu código de sincronização</div>
+          <div class="meta-pct" id="syncCodeDisplay" style="font-size:34px; margin:0;"></div>
+        </div>
+        <p class="calc-note" id="syncConnectedInfo" style="margin-bottom:14px;"></p>
+        <div class="actions">
+          <button class="cancel" id="btnDisconnectSync">Desconectar</button>
+          <button class="add" id="btnForceSyncNow">Sincronizar agora</button>
+        </div>
+      </div>
+    </div>
     <div id="confirmSheet" style="display:none;">
       <h2>Confirmar</h2>
       <p id="confirmMsg" style="color:var(--text-dim); font-size:14px; margin:0 0 18px;"></p>
@@ -835,6 +866,8 @@ function byDateDesc(a,b){ return (b.date||'').localeCompare(a.date||'') || b.id-
 
 function save(){
   try{ localStorage.setItem('orcamento_v2', JSON.stringify(data)); }catch(e){}
+  try{ localStorage.setItem('orcamento_local_updated_at', String(Date.now())); }catch(e){}
+  scheduleCloudPush();
 }
 function fmt(v){ return v.toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
 function parseMoney(v){
@@ -1142,6 +1175,7 @@ function render(){
   if(currentTab==='geral'){
     document.getElementById('tabChartBox').style.display = 'none';
     document.getElementById('backupBox').style.display = 'block';
+    updateSyncStatusLine();
     document.getElementById('filterBox').style.display = 'block';
     renderFilterChips();
     document.getElementById('recurList').style.display = 'none';
@@ -1297,7 +1331,7 @@ document.getElementById('catChips').addEventListener('click', e=>{
   syncChipSelection();
 });
 function hideAllSheets(){
-  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','thirdPartySheet','debtSheet','exportTextSheet','importTextSheet'].forEach(id=>document.getElementById(id).style.display='none');
+  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','thirdPartySheet','debtSheet','exportTextSheet','importTextSheet','syncSheet'].forEach(id=>document.getElementById(id).style.display='none');
 }
 function openSheet(){
   hideAllSheets();
@@ -2548,6 +2582,170 @@ document.getElementById('btnApplyImportText').addEventListener('click', ()=>{
     errEl.style.display = 'block';
   }
 });
+
+// ----- sincronização via Firebase -----
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCrfLzvHga_Z6C_U_A3lB1AqLRLG4GQI08",
+  authDomain: "financas-pessoais-sync.firebaseapp.com",
+  projectId: "financas-pessoais-sync",
+  storageBucket: "financas-pessoais-sync.firebasestorage.app",
+  messagingSenderId: "981034710871",
+  appId: "1:981034710871:web:716a5ac6eb098022977012"
+};
+function gerarCodigoSync(){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sem O/0, I/1/L, pra não confundir na hora de digitar
+  let s = '';
+  for(let i=0;i<6;i++) s += chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+let fbAuth=null, fbDb=null, fbDocRef=null, fbReady=false, fbUnsub=null;
+let applyingRemote=false, lastPushedAt=0, syncPushTimer=null;
+
+function loadScriptOnce(src){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector('script[src="'+src+'"]')){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src; s.onload = ()=>resolve(); s.onerror = ()=>reject(new Error('falha ao carregar '+src));
+    document.head.appendChild(s);
+  });
+}
+async function ensureFirebaseLoaded(){
+  if(window.firebase && window.firebase.apps) return;
+  await loadScriptOnce('https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js');
+  await loadScriptOnce('https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js');
+  await loadScriptOnce('https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js');
+}
+function scheduleCloudPush(){
+  if(!fbReady || applyingRemote) return;
+  clearTimeout(syncPushTimer);
+  syncPushTimer = setTimeout(async ()=>{
+    try{
+      lastPushedAt = Date.now();
+      await fbDocRef.set({ payload: JSON.stringify(data), updatedAt: lastPushedAt });
+    }catch(e){ /* tenta de novo no próximo save */ }
+  }, 1500);
+}
+function attachSyncListener(){
+  if(fbUnsub) fbUnsub();
+  fbUnsub = fbDocRef.onSnapshot(doc=>{
+    if(!doc.exists || applyingRemote) return;
+    const d = doc.data();
+    if(!d || d.updatedAt===lastPushedAt) return;
+    try{
+      const parsed = JSON.parse(d.payload);
+      applyingRemote = true;
+      applyImportedBackup(parsed);
+    }catch(e){} finally { applyingRemote = false; }
+  }, ()=>{ /* erro de permissão/rede: ignora silenciosamente */ });
+}
+function updateSyncStatusLine(){
+  const el = document.getElementById('syncStatusLine');
+  if(!el) return;
+  const cfg = JSON.parse(localStorage.getItem('orcamento_cloud_cfg')||'null');
+  el.textContent = (cfg && fbReady) ? '🟢 Sincronizado — código: '+cfg.codigo
+    : (cfg ? '🟡 Configurado, conectando...' : '');
+}
+async function connectOrResumeSync(configObj, codigo, isFirstSetup){
+  const errEl = document.getElementById('syncError');
+  try{
+    await ensureFirebaseLoaded();
+    if(!firebase.apps.length) firebase.initializeApp(configObj);
+    fbAuth = firebase.auth();
+    if(!fbAuth.currentUser) await fbAuth.signInAnonymously();
+    fbDb = firebase.firestore();
+    fbDocRef = fbDb.collection('orcamentos').doc(codigo);
+    const snap = await fbDocRef.get();
+    const localUpdatedAt = Number(localStorage.getItem('orcamento_local_updated_at')||0);
+
+    const finishConnect = async (pullRemote)=>{
+      if(pullRemote && snap.exists){
+        applyingRemote = true;
+        try{ applyImportedBackup(JSON.parse(snap.data().payload)); } finally { applyingRemote = false; }
+      } else {
+        lastPushedAt = Date.now();
+        await fbDocRef.set({ payload: JSON.stringify(data), updatedAt: lastPushedAt });
+      }
+      attachSyncListener();
+      fbReady = true;
+      localStorage.setItem('orcamento_cloud_cfg', JSON.stringify({ firebaseConfig: configObj, codigo }));
+      if(errEl) errEl.style.display = 'none';
+      updateSyncStatusLine();
+      renderSyncSheetConnected(codigo);
+    };
+
+    if(isFirstSetup && snap.exists){
+      askConfirm('Já existe um backup salvo com esse código na nuvem. Usar os dados da nuvem aqui?', ()=>finishConnect(true),
+        { label:'Usar os dados deste aparelho', cb:()=>finishConnect(false) });
+    } else if(!isFirstSetup && snap.exists){
+      const d = snap.data();
+      await finishConnect(d.updatedAt > localUpdatedAt);
+    } else {
+      await finishConnect(false);
+    }
+  }catch(e){
+    if(errEl){
+      errEl.textContent = 'Não foi possível conectar. Confira sua internet, e se o Firestore e a Autenticação anônima estão ativados no projeto Firebase.';
+      errEl.style.display = 'block';
+    }
+    updateSyncStatusLine();
+  }
+}
+function renderSyncSheetConnected(codigo){
+  document.getElementById('syncSetupForm').style.display = 'none';
+  document.getElementById('syncConnectedView').style.display = 'block';
+  document.getElementById('syncCodeDisplay').textContent = codigo;
+  document.getElementById('syncConnectedInfo').textContent = 'Use esse mesmo código em "Já tenho um código" no outro aparelho pra ligar os dois.';
+}
+document.getElementById('btnSyncOpen').addEventListener('click', ()=>{
+  hideAllSheets();
+  const cfg = JSON.parse(localStorage.getItem('orcamento_cloud_cfg')||'null');
+  document.getElementById('syncError').style.display = 'none';
+  if(cfg && fbReady){
+    document.getElementById('syncSetupForm').style.display = 'none';
+    document.getElementById('syncConnectedView').style.display = 'block';
+    renderSyncSheetConnected(cfg.codigo);
+  } else {
+    document.getElementById('syncSetupForm').style.display = 'block';
+    document.getElementById('syncConnectedView').style.display = 'none';
+    document.getElementById('syncCodigoInput').value = '';
+  }
+  document.getElementById('syncSheet').style.display = 'block';
+  overlay.classList.add('show');
+});
+document.getElementById('btnCloseSync').addEventListener('click', ()=>overlay.classList.remove('show'));
+document.getElementById('btnCreateCode').addEventListener('click', ()=>{
+  document.getElementById('syncError').style.display = 'none';
+  connectOrResumeSync(FIREBASE_CONFIG, gerarCodigoSync(), true);
+});
+document.getElementById('btnConnectSync').addEventListener('click', ()=>{
+  const errEl = document.getElementById('syncError');
+  const codigo = document.getElementById('syncCodigoInput').value.trim().toUpperCase();
+  if(!codigo){
+    errEl.textContent = 'Digite o código gerado no outro aparelho.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  connectOrResumeSync(FIREBASE_CONFIG, codigo, true);
+});
+document.getElementById('btnForceSyncNow').addEventListener('click', async ()=>{
+  if(!fbReady) return;
+  lastPushedAt = Date.now();
+  try{ await fbDocRef.set({ payload: JSON.stringify(data), updatedAt: lastPushedAt }); }catch(e){}
+});
+document.getElementById('btnDisconnectSync').addEventListener('click', ()=>{
+  askConfirm('Desconectar a sincronização? Os dados continuam salvos neste aparelho e na nuvem, só param de se atualizar sozinhos.', ()=>{
+    if(fbUnsub) fbUnsub();
+    fbReady = false;
+    localStorage.removeItem('orcamento_cloud_cfg');
+    updateSyncStatusLine();
+    overlay.classList.remove('show');
+  });
+});
+(function autoResumeSync(){
+  const cfg = JSON.parse(localStorage.getItem('orcamento_cloud_cfg')||'null');
+  if(cfg) connectOrResumeSync(cfg.firebaseConfig, cfg.codigo, false);
+})();
 
 render();
 if('serviceWorker' in navigator){ window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
