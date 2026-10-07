@@ -1176,11 +1176,23 @@ function render(){
     renderFilterChips();
     document.getElementById('recurList').style.display = 'none';
     const saldoAcumulado = data.entries.filter(e=>e.ym<=selectedYM).reduce((s,e)=> s + (e.type==='receita' ? e.valor : -e.valor), 0);
-    const totGuardadoGoals = data.goals.reduce((s,g)=>s+g.guardado, 0);
-    const patrimonio = saldoAcumulado + totAtual + totGuardadoGoals;
+    // Patrimônio = carteira (saldo acumulado) + investimentos + metas guardadas.
+    // Em meses passados, só conta o que já existia naquele mês.
+    const isPast = selectedYM < ymNow();
+    const atualAteMes = isPast ? data.assets.filter(a=>a.ym<=selectedYM).reduce((s,a)=>s+a.atual,0) : totAtual;
+    let totGuardadoGoals = data.goals.reduce((s,g)=>s+g.guardado, 0);
+    if(isPast){
+      data.entries.forEach(e=>{
+        if(e.ym<=selectedYM) return;
+        if(e.isAporte && /^Aporte na meta:/.test(e.desc)) totGuardadoGoals -= e.valor;
+        else if(e.fromPatrimonio && /^Retirada da meta:/.test(e.desc)) totGuardadoGoals += e.valor;
+      });
+      totGuardadoGoals = Math.max(0, totGuardadoGoals);
+    }
+    const patrimonio = saldoAcumulado + atualAteMes + totGuardadoGoals;
     geralExtra.innerHTML = `<div class="inv-cards">
       <div class="card" style="background:linear-gradient(135deg,var(--sage),#059669); color:#ffffff;">
-        <div class="label" style="color:#fff;opacity:.9" style="opacity:.75;">Patrimônio total</div>
+        <div class="label" style="color:#fff;">Patrimônio total</div>
         <div class="num" style="font-size:20px; font-weight:700;">${fmt(patrimonio)}</div>
       </div>
       <div class="card">
@@ -1288,7 +1300,10 @@ document.getElementById('list').addEventListener('click', e=>{
         save(); render();
       }});
     } else {
-      askConfirm(ent.recurringId ? 'Excluir só este mês? A recorrência continua nos próximos meses.' : 'Excluir este lançamento?', removeOne);
+      const msg = ent.recurringId ? 'Excluir só este mês? A recorrência continua nos próximos meses.'
+        : (ent.isAporte || ent.fromPatrimonio) ? 'Este lançamento vem de um investimento/meta. Excluí-lo só ajusta o saldo; o ativo ou meta continua como está. Excluir mesmo assim?'
+        : 'Excluir este lançamento?';
+      askConfirm(msg, removeOne);
     }
   }
   if(e.target.classList.contains('edit')){
@@ -1298,10 +1313,14 @@ document.getElementById('list').addEventListener('click', e=>{
 document.getElementById('assetList').addEventListener('click', e=>{
   if(e.target.classList.contains('del')){
     const id = e.target.dataset.aid;
-    askConfirm('Excluir este ativo?', ()=>{
-      data.assets = data.assets.filter(x=>String(x.id)!==id);
+    const asset = data.assets.find(x=>String(x.id)===id);
+    if(!asset) return;
+    const removeAsset = ()=>{ data.assets = data.assets.filter(x=>x.id!==asset.id); };
+    askConfirm('Excluir "'+asset.nome+'"? Resgatar o valor atual ('+fmt(asset.atual)+') de volta para o saldo?', ()=>{
+      removeAsset();
+      registrarRetiradaCaixa(asset.atual, 'Resgate: '+asset.nome);
       save(); render();
-    });
+    }, { label:'Só excluir, sem devolver ao saldo', cb:()=>{ removeAsset(); save(); render(); } });
   }
 });
 
@@ -1817,10 +1836,16 @@ document.getElementById('goalList').addEventListener('click', e=>{
     return;
   }
   if(act==='del'){
-    askConfirm('Excluir o objetivo "'+g.nome+'"?', ()=>{
-      data.goals = data.goals.filter(x=>x.id!==g.id);
-      save(); render();
-    });
+    const removeGoal = ()=>{ data.goals = data.goals.filter(x=>x.id!==g.id); };
+    if(g.guardado>0){
+      askConfirm('Excluir o objetivo "'+g.nome+'"? Devolver o valor guardado ('+fmt(g.guardado)+') para o saldo?', ()=>{
+        removeGoal();
+        registrarRetiradaCaixa(g.guardado, 'Retirada da meta: '+g.nome);
+        save(); render();
+      }, { label:'Só excluir, sem devolver ao saldo', cb:()=>{ removeGoal(); save(); render(); } });
+    } else {
+      askConfirm('Excluir o objetivo "'+g.nome+'"?', ()=>{ removeGoal(); save(); render(); });
+    }
   } else if(act==='edit'){
     hideAllSheets();
     editingGoalId = g.id;
