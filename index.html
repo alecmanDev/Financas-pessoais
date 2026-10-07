@@ -297,6 +297,7 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
         </div>
         <div class="filter-scroll"><div class="cat-chips" id="cardFilterChipsSection" style="flex-wrap:nowrap;"></div></div>
         <div id="cardSummaryBox"></div>
+        <div id="invoiceBox"></div>
         <div class="legend-row" style="margin-top:14px;"><span><span class="dot" style="background:var(--gold)"></span>Gasto no cartão</span></div>
         <div class="line-chart-wrap"><div id="cardMonthlyLineChart"></div></div>
         <h3 style="margin:16px 0 10px; font-size:13px;">Gasto por cartão — este mês</h3>
@@ -627,6 +628,23 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
         <button class="add" id="btnSaveDebt">Salvar</button>
       </div>
     </div>
+    <div id="invoiceSheet" style="display:none;">
+      <h2>Pagar fatura</h2>
+      <p class="calc-note" id="invInfo" style="margin-bottom:14px;"></p>
+      <div class="field">
+        <label>Valor pago (R$)</label>
+        <input id="invValor" type="text" inputmode="decimal" placeholder="0,00">
+      </div>
+      <div class="field">
+        <label>Data do pagamento</label>
+        <input id="invData" type="date">
+      </div>
+      <div class="calc-note" id="invError" style="display:none; color:var(--coral); margin-bottom:10px;"></div>
+      <div class="actions">
+        <button class="cancel" id="btnCancelInvoice">Cancelar</button>
+        <button class="add" id="btnConfirmInvoice">Confirmar</button>
+      </div>
+    </div>
     <div id="coverSheet" style="display:none;">
       <h2>Cobrir saldo negativo</h2>
       <p class="calc-note" id="coverInfo" style="margin-bottom:14px;"></p>
@@ -747,6 +765,7 @@ if(!Array.isArray(data.goals)) data.goals = [];
 if(!Array.isArray(data.cards)) data.cards = [];
 if(!Array.isArray(data.thirdParty)) data.thirdParty = [];
 if(!Array.isArray(data.debts)) data.debts = [];
+if(!Array.isArray(data.invoicePayments)) data.invoicePayments = [];
 if(!Array.isArray(data.notifDismissed)) data.notifDismissed = [];
 let filterVal = null, cardFilterSel = null, curSaldoMesDeficit = 0;
 if(!data.categories){
@@ -858,6 +877,29 @@ function getPeriodEntries(){
   }
   return data.entries.filter(e=>e.ym===selectedYM);
 }
+// ----- faturas de cartão -----
+// Compras no cartão só saem da carteira (saldo acumulado) quando a fatura é paga.
+function isCardCharge(e){ return !!e.cartao && e.type!=='receita'; }
+function walletSaldo(upToYm){
+  const ent = data.entries.filter(e=>e.ym<=upToYm && !isCardCharge(e)).reduce((s,e)=> s + (e.type==='receita' ? e.valor : -e.valor), 0);
+  const pag = data.invoicePayments.filter(p=>p.ym<=upToYm).reduce((s,p)=>s+p.valor, 0);
+  return ent - pag;
+}
+function invoiceList(){
+  const map = {};
+  data.entries.filter(isCardCharge).forEach(e=>{
+    const key = (e.cardId||0)+'|'+e.ym;
+    if(!map[key]) map[key] = { key, cardId:e.cardId||0, ym:e.ym, total:0, paid:0 };
+    map[key].total += e.valor;
+  });
+  data.invoicePayments.forEach(p=>{
+    const key = (p.cardId||0)+'|'+p.invYm;
+    if(!map[key]) map[key] = { key, cardId:p.cardId||0, ym:p.invYm, total:0, paid:0 };
+    map[key].paid += p.valor;
+  });
+  return Object.values(map).map(i=>Object.assign(i,{ open: Math.max(0, Math.round((i.total-i.paid)*100)/100) })).sort((a,b)=>a.ym.localeCompare(b.ym) || a.cardId-b.cardId);
+}
+function invoiceCardName(cardId){ return cardId ? (cardName(cardId)||'Cartão') : 'Cartão'; }
 function byDateDesc(a,b){ return (b.date||'').localeCompare(a.date||'') || b.id-a.id; }
 
 function save(){
@@ -990,6 +1032,7 @@ function renderCharts(monthEntries, byCat, totD, assets, totInv, totAtual){
   renderCategoryChart(byCat, totD);
   renderInvestChart(assets, totInv, totAtual);
   renderCardsSection();
+  renderInvoices();
   renderTerceiros();
   renderDebts();
 }
@@ -1073,6 +1116,64 @@ function renderCardsSection(){
   document.getElementById('cardMonthlyBar').innerHTML = barsHtml(mesVals);
   document.getElementById('cardAnnualBar').innerHTML = barsHtml(anoVals);
 }
+function renderInvoices(){
+  const box = document.getElementById('invoiceBox');
+  const open = invoiceList().filter(i=>i.open>0);
+  const pays = [...data.invoicePayments].sort((a,b)=>(b.date||'').localeCompare(a.date||'') || b.id-a.id).slice(0,5);
+  if(open.length===0 && pays.length===0){ box.innerHTML = ''; return; }
+  let html = '<h3 style="margin:16px 0 10px; font-size:13px;">🧾 Faturas em aberto</h3>';
+  html += open.length===0 ? '<div class="empty" style="padding:8px 0;">Nenhuma fatura em aberto 🎉</div>' : open.map(i=>`
+    <div class="row" style="padding:10px 0;">
+      <div><div class="desc">${esc(invoiceCardName(i.cardId))} · ${monthLabel(i.ym)}</div><div class="cat">${i.paid>0 ? 'Já pago '+fmt(i.paid)+' de '+fmt(i.total) : 'Ainda não descontada do saldo'}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="val neg">${fmt(i.open)}</div>
+        <button class="btn-ajustar" style="padding:7px 10px;" data-pay="${esc(i.key)}">Paguei</button>
+      </div>
+    </div>`).join('');
+  if(pays.length){
+    html += '<h3 style="margin:14px 0 6px; font-size:13px;">Pagamentos recentes</h3>' + pays.map(p=>`
+      <div class="row" style="padding:8px 0;">
+        <div><div class="desc">${esc(invoiceCardName(p.cardId))} · fatura de ${monthLabel(p.invYm)}</div><div class="cat">${fmtDay(p.date)}</div></div>
+        <div style="display:flex;align-items:center;"><div class="val">${fmt(p.valor)}</div><button class="del" data-delpay="${p.id}" title="Desfazer pagamento">✕</button></div>
+      </div>`).join('');
+  }
+  box.innerHTML = html;
+}
+let payingInvoice = null;
+document.getElementById('invoiceBox').addEventListener('click', e=>{
+  const payBtn = e.target.closest('[data-pay]');
+  if(payBtn){
+    const inv = invoiceList().find(i=>i.key===payBtn.dataset.pay);
+    if(!inv) return;
+    payingInvoice = inv;
+    hideAllSheets();
+    document.getElementById('invInfo').textContent = invoiceCardName(inv.cardId)+' · fatura de '+monthLabel(inv.ym)+' · em aberto: '+fmt(inv.open);
+    document.getElementById('invValor').value = String(inv.open).replace('.',',');
+    document.getElementById('invData').value = todayISO();
+    document.getElementById('invError').style.display = 'none';
+    document.getElementById('invoiceSheet').style.display = 'block';
+    overlay.classList.add('show');
+    return;
+  }
+  const delBtn = e.target.closest('[data-delpay]');
+  if(delBtn){
+    askConfirm('Desfazer este pagamento? O valor volta a ser descontado do saldo só quando a fatura for paga de novo.', ()=>{
+      data.invoicePayments = data.invoicePayments.filter(p=>String(p.id)!==delBtn.dataset.delpay);
+      save(); render();
+    });
+  }
+});
+document.getElementById('btnCancelInvoice').addEventListener('click', ()=>overlay.classList.remove('show'));
+document.getElementById('btnConfirmInvoice').addEventListener('click', ()=>{
+  const errEl = document.getElementById('invError');
+  const valor = parseMoney(document.getElementById('invValor').value);
+  const date = document.getElementById('invData').value || todayISO();
+  if(!payingInvoice) return;
+  if(isNaN(valor) || valor<=0){ errEl.textContent = 'Informe um valor válido maior que zero.'; errEl.style.display='block'; return; }
+  data.invoicePayments.push({ id:newId(), cardId:payingInvoice.cardId||null, invYm:payingInvoice.ym, valor, date, ym:date.slice(0,7) });
+  payingInvoice = null;
+  save(); overlay.classList.remove('show'); render();
+});
 document.getElementById('cardFilterChipsSection').addEventListener('click', e=>{
   const b = e.target.closest('.cat-chip'); if(!b) return;
   cardFilterSel = b.dataset.cf==='all' ? null : Number(b.dataset.cf);
@@ -1175,7 +1276,8 @@ function render(){
     document.getElementById('filterBox').style.display = 'block';
     renderFilterChips();
     document.getElementById('recurList').style.display = 'none';
-    const saldoAcumulado = data.entries.filter(e=>e.ym<=selectedYM).reduce((s,e)=> s + (e.type==='receita' ? e.valor : -e.valor), 0);
+    const saldoAcumulado = walletSaldo(selectedYM);
+    const faturasAbertas = invoiceList().filter(i=>i.ym<=selectedYM).reduce((s,i)=>s+i.open,0);
     // Patrimônio = carteira (saldo acumulado) + investimentos + metas guardadas.
     // Em meses passados, só conta o que já existia naquele mês.
     const isPast = selectedYM < ymNow();
@@ -1198,6 +1300,7 @@ function render(){
       <div class="card">
         <div class="label">Saldo acumulado</div>
         <div class="num" style="font-size:20px;">${fmt(saldoAcumulado)}</div>
+        ${faturasAbertas>0 ? `<div class="label" style="margin:4px 0 0;">Faturas em aberto: ${fmt(faturasAbertas)}</div>` : ''}
       </div>
     </div>`;
     renderCharts(monthEntries, byCat, totD, data.assets, totInv, totAtual);
@@ -1346,7 +1449,7 @@ document.getElementById('catChips').addEventListener('click', e=>{
   syncChipSelection();
 });
 function hideAllSheets(){
-  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','thirdPartySheet','debtSheet','exportTextSheet','importTextSheet','syncSheet'].forEach(id=>document.getElementById(id).style.display='none');
+  ['entrySheet','assetSheet','metaSheet','goalSheet','contribSheet','confirmSheet','catManageSheet','cardManageSheet','coverSheet','invoiceSheet','thirdPartySheet','debtSheet','exportTextSheet','importTextSheet','syncSheet'].forEach(id=>document.getElementById(id).style.display='none');
 }
 function openSheet(){
   hideAllSheets();
@@ -1564,6 +1667,7 @@ function applyImportedBackup(parsed){
     cards: Array.isArray(parsed.cards) ? parsed.cards : [],
     thirdParty: Array.isArray(parsed.thirdParty) ? parsed.thirdParty : [],
     debts: Array.isArray(parsed.debts) ? parsed.debts : [],
+    invoicePayments: Array.isArray(parsed.invoicePayments) ? parsed.invoicePayments : [],
     notifDismissed: Array.isArray(parsed.notifDismissed) ? parsed.notifDismissed : [],
     categories: parsed.categories && typeof parsed.categories==='object' ? parsed.categories : { receita: DEFAULT_CATS.receita.slice(), fixa: DEFAULT_CATS.fixa.slice(), variavel: DEFAULT_CATS.variavel.slice() },
     investGoalPct: typeof parsed.investGoalPct === 'number' ? parsed.investGoalPct : 0,
