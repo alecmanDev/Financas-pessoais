@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meu Orçamento</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#15140f">
+<meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Orçamento">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -18,22 +18,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#15140f; --panel:#211f19; --panel2:#2b2820; --line:#3c3829;
-  --gold:#d9b34d; --sage:#8fbf9f; --coral:#e0785c; --blue:#7aa3d8; --purple:#b592d6;
-  --text:#f5f1e4; --text-dim:#a89a7f;
+  color-scheme:light;
+  --bg:#ffffff; --panel:#ffffff; --panel2:#f3f5f9; --line:#e5e8ef;
+  --gold:#6366f1; --sage:#10b981; --coral:#f43f5e; --blue:#3b82f6; --purple:#a855f7;
+  --text:#1b2030; --text-dim:#6b7285;
+  --shadow:0 1px 3px rgba(20,30,60,.07), 0 4px 14px rgba(20,30,60,.05);
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
   padding-bottom:env(safe-area-inset-bottom,0px);
-}
-@media (prefers-color-scheme: light){
-  :root:not([data-theme="dark"]){
-    --bg:#f6f2e8; --panel:#ffffff; --panel2:#efe8d6; --line:#e2d8bd;
-    --text:#292417; --text-dim:#7c705a;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#15140f; --panel:#211f19; --panel2:#2b2820; --line:#3c3829;
-  --text:#f5f1e4; --text-dim:#a89a7f;
 }
 *{box-sizing:border-box;}
 html{scroll-padding-top:env(safe-area-inset-top,0px);}
@@ -46,7 +38,7 @@ header .monthNav{display:flex; align-items:center; gap:10px;}
 header .monthNav button{background:var(--panel2); border:1px solid var(--line); color:var(--text); width:28px; height:28px; border-radius:8px; font-size:14px; cursor:pointer; line-height:1;}
 header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align:center;}
 .cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;}
-.card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px;}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow);}
 .card.wide{grid-column:1/-1; display:flex; justify-content:space-between; align-items:center;}
 .card .label{font-size:12px; color:var(--text-dim); margin-bottom:4px;}
 .card .num{font-size:20px; font-weight:600;}
@@ -60,9 +52,12 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 
 .tabs{display:flex; gap:6px; margin-bottom:14px; background:var(--panel2); padding:4px; border-radius:12px; overflow-x:auto;}
 .tab{flex:1; text-align:center; padding:9px 4px; border-radius:9px; font-size:12px; font-weight:500; color:var(--text-dim); cursor:pointer; white-space:nowrap;}
-.tab.active{background:var(--panel); color:var(--text);}
+.tab{--tc:var(--gold);}
+.tab[data-tab="geral"]{--tc:#6366f1;} .tab[data-tab="receita"]{--tc:#10b981;} .tab[data-tab="fixa"]{--tc:#f59e0b;}
+.tab[data-tab="variavel"]{--tc:#f43f5e;} .tab[data-tab="investimentos"]{--tc:#3b82f6;} .tab[data-tab="calculadoras"]{--tc:#a855f7;}
+.tab.active{background:var(--tc); color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,.15);}
 
-.list{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden;}
+.list{background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow);}
 .row{display:flex; justify-content:space-between; align-items:center; padding:13px 16px; border-bottom:1px solid var(--line);}
 .row:last-child{border-bottom:none;}
 .row .desc{font-size:14px;}
@@ -72,14 +67,14 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 .empty{padding:30px 16px; text-align:center; color:var(--text-dim); font-size:13px;}
 
 .inv-cards{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
-.inv-cards .full{grid-column:1/-1; background:linear-gradient(135deg,var(--gold),#b5872f); color:#1a1607; border-radius:14px; padding:16px;}
-.inv-cards .full .label{font-size:12px; opacity:.75; margin-bottom:4px;}
+.inv-cards .full{grid-column:1/-1; background:linear-gradient(135deg,var(--gold),#8b5cf6); color:#ffffff; border-radius:14px; padding:16px;}
+.inv-cards .full .label{font-size:12px; color:#fff; opacity:.9; margin-bottom:4px;}
 .inv-cards .full .num{font-size:24px; font-weight:700;}
-.inv-cards .full.patrimonio{background:linear-gradient(135deg,var(--sage),#4f7a5c); color:#0f1a12;}
+.inv-cards .full.patrimonio{background:linear-gradient(135deg,var(--sage),#059669); color:#ffffff;}
 
-.fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:54px; height:54px; border-radius:50%; background:var(--gold); color:#1a1607; font-size:26px; border:none; box-shadow:0 6px 16px rgba(0,0,0,.35); cursor:pointer;}
+.fab{position:fixed; right:20px; bottom:calc(24px + env(safe-area-inset-bottom,0px)); width:54px; height:54px; border-radius:50%; background:var(--gold); color:#ffffff; font-size:26px; border:none; box-shadow:0 6px 16px rgba(99,102,241,.45); cursor:pointer;}
 
-.overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:flex-end; justify-content:center; z-index:10;}
+.overlay{position:fixed; inset:0; background:rgba(20,25,45,.45); display:none; align-items:flex-end; justify-content:center; z-index:10;}
 .overlay.show{display:flex;}
 .sheet{background:var(--panel); width:100%; max-width:520px; max-height:88vh; overflow-y:auto; border-radius:18px 18px 0 0; padding:22px 20px calc(22px + env(safe-area-inset-bottom,0px)); border:1px solid var(--line); border-bottom:none;}
 .sheet h2{font-size:18px; margin:0 0 16px;}
@@ -88,13 +83,13 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 .field input{width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:11px 12px; color:var(--text); font-size:15px; font-family:inherit;}
 .seg{display:flex; gap:6px; margin-bottom:16px;}
 .seg button{flex:1; padding:9px 0; border-radius:9px; border:1px solid var(--line); background:var(--panel2); color:var(--text-dim); font-size:12.5px; cursor:pointer;}
-.seg button.on{background:var(--gold); color:#1a1607; border-color:var(--gold); font-weight:600;}
+.seg button.on{background:var(--gold); color:#ffffff; border-color:var(--gold); font-weight:600;}
 .actions{display:flex; gap:10px; margin-top:6px;}
 .actions button{flex:1; padding:13px 0; border-radius:10px; border:none; font-size:15px; font-weight:600; cursor:pointer;}
 .actions .cancel{background:var(--panel2); color:var(--text);}
-.actions .add{background:var(--gold); color:#1a1607;}
+.actions .add{background:var(--gold); color:#ffffff;}
 
-.chart-block{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px;}
+.chart-block{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; box-shadow:var(--shadow);}
 .chart-block h3{font-size:14px; margin:0 0 12px; font-weight:600;}
 .bars-col{display:flex; align-items:flex-end; gap:10px; height:150px; overflow-x:auto; padding-bottom:4px;}
 .daycol{display:flex; flex-direction:column; align-items:center; gap:5px; min-width:22px;}
@@ -116,7 +111,7 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 .meta-slider{width:100%; accent-color:var(--blue); margin-bottom:14px;}
 .meta-chips{display:flex; gap:8px; margin-bottom:16px;}
 .meta-chips button{flex:1; padding:9px 0; border-radius:9px; border:1px solid var(--line); background:var(--panel2); color:var(--text-dim); font-size:13px; cursor:pointer;}
-.meta-chips button.on{background:var(--blue); color:#101b26; border-color:var(--blue); font-weight:600;}
+.meta-chips button.on{background:var(--blue); color:#ffffff; border-color:var(--blue); font-weight:600;}
 .meta-valor-label{font-size:12px; color:var(--text-dim); text-align:center; margin-bottom:4px;}
 .meta-valor-input{width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px; color:var(--text); font-size:22px; font-weight:700; text-align:center; font-family:'Fraunces',serif;}
 .meta-hint{font-size:11px; color:var(--text-dim); text-align:center; margin-top:6px;}
@@ -158,17 +153,17 @@ header .month{color:var(--text-dim); font-size:14px; min-width:110px; text-align
 
 .cat-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
 .cat-chip{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:20px;border:1px solid var(--line);background:var(--panel2);color:var(--text-dim);font-size:13px;cursor:pointer;}
-.cat-chip.on{background:var(--gold);color:#1a1607;border-color:var(--gold);font-weight:600;}
+.cat-chip.on{background:var(--gold);color:#ffffff;border-color:var(--gold);font-weight:600;}
 .cat-chip .cdot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none;}
 .link-btn{background:none;border:none;color:var(--gold);font-size:12.5px;cursor:pointer;padding:4px 0;text-decoration:underline;}
 .rename-row{display:flex;align-items:center;gap:8px;padding:8px 0;}
 .rename-row input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;font-family:inherit;}
 
 .filter-scroll{overflow-x:auto; padding-bottom:2px;}
-.notif-banner{background:linear-gradient(135deg,var(--gold),#b5872f); color:#1a1607; border-radius:14px; padding:14px 40px 14px 16px; margin-bottom:16px; position:relative;}
+.notif-banner{background:linear-gradient(135deg,var(--gold),#8b5cf6); color:#ffffff; border-radius:14px; padding:14px 40px 14px 16px; margin-bottom:16px; position:relative;}
 .notif-banner h4{margin:0 0 6px; font-size:13px; font-weight:700;}
 .notif-banner .line{font-size:13px; line-height:1.5;}
-.notif-banner .closeX{position:absolute; top:10px; right:10px; background:rgba(0,0,0,.15); border:none; color:#1a1607; width:26px; height:26px; border-radius:50%; font-size:15px; cursor:pointer; line-height:1;}
+.notif-banner .closeX{position:absolute; top:10px; right:10px; background:rgba(255,255,255,.25); border:none; color:#ffffff; width:26px; height:26px; border-radius:50%; font-size:15px; cursor:pointer; line-height:1;}
 
 .backup-text{width:100%; min-height:160px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:10px; color:var(--text); font-size:11px; font-family:monospace; resize:vertical;}
 
@@ -717,14 +712,15 @@ const DEFAULT_CATS = {
   fixa: ['Moradia','Saúde','Transporte','Assinaturas','Outros'],
   variavel: ['Moradia','Mercado','Transporte','Lazer','Investimentos','Outros']
 };
-const COLORS = ['#d9b34d','#8fbf9f','#e0785c','#7aa3d8','#b592d6'];
+const COLORS = ['#6366f1','#10b981','#f43f5e','#3b82f6','#a855f7'];
 const CATEGORY_COLORS = {
-  'Moradia':'#7aa3d8', 'Mercado':'#d9b34d', 'Transporte':'#b592d6',
-  'Saúde':'#8fbf9f', 'Lazer':'#e0785c', 'Assinaturas':'#5fd9c9',
-  'Renda principal':'#8fbf9f', 'Renda extra':'#d9b34d', 'Investimentos':'#7aa3d8',
-  'Outros':'#8a8071'
+  'Moradia':'#3b82f6', 'Mercado':'#f59e0b', 'Transporte':'#a855f7',
+  'Saúde':'#10b981', 'Lazer':'#f43f5e', 'Assinaturas':'#06b6d4',
+  'Renda principal':'#10b981', 'Renda extra':'#84cc16', 'Investimentos':'#6366f1',
+  'Outros':'#94a3b8'
 };
-const DYNAMIC_PALETTE = ['#d88fc0','#a3c95f','#e0a95c','#4f6fa8','#c95f8f','#9fd95f','#d95f9f','#5f8fd9','#d9c95f','#7fd9a0'];
+const DYNAMIC_PALETTE = ['#ec4899','#14b8a6','#f97316','#8b5cf6','#ef4444','#22c55e','#eab308','#0ea5e9','#d946ef','#64748b'];
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 function hashCode(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
 function colorForCategory(cat){
   if(CATEGORY_COLORS[cat]) return CATEGORY_COLORS[cat];
@@ -865,7 +861,7 @@ function getPeriodEntries(){
 function byDateDesc(a,b){ return (b.date||'').localeCompare(a.date||'') || b.id-a.id; }
 
 function save(){
-  try{ localStorage.setItem('orcamento_v2', JSON.stringify(data)); }catch(e){}
+  try{ localStorage.setItem('orcamento_v2', JSON.stringify(data)); }catch(e){ if(!window._saveWarned){ window._saveWarned=true; alert('Não foi possível salvar os dados neste aparelho (armazenamento cheio?). Faça um backup agora.'); } }
   try{ localStorage.setItem('orcamento_local_updated_at', String(Date.now())); }catch(e){}
   scheduleCloudPush();
 }
@@ -915,7 +911,7 @@ function renderCategoryChart(byCat, totD){
   const max = Math.max(...cats.map(c=>byCat[c]));
   el.innerHTML = cats.sort((a,b)=>byCat[b]-byCat[a]).map(c=>`
     <div class="hbar-row">
-      <div class="hbar-top"><span>${c}</span><span>${fmt(byCat[c])}</span></div>
+      <div class="hbar-top"><span>${esc(c)}</span><span>${fmt(byCat[c])}</span></div>
       <div class="hbar-track"><div class="hbar-fill" style="width:${byCat[c]/max*100}%; background:${colorForCategory(c)}"></div></div>
     </div>
   `).join('');
@@ -929,7 +925,7 @@ function renderInvestChart(assets, totInv, totAtual){
   let html = `<div class="legend-row"><span><span class="dot" style="background:var(--blue)"></span>Investido</span><span><span class="dot" style="background:var(--gold)"></span>Atual</span></div>`;
   html += assets.map(a=>`
     <div class="hbar-row">
-      <div class="hbar-top"><span>${a.nome}</span><span>${fmt(a.atual)}</span></div>
+      <div class="hbar-top"><span>${esc(a.nome)}</span><span>${fmt(a.atual)}</span></div>
       <div class="hbar-track"><div class="hbar-fill" style="width:${a.investido/max*100}%; background:var(--blue);"></div></div>
       <div class="hbar-track" style="margin-top:3px;"><div class="hbar-fill" style="width:${a.atual/max*100}%; background:var(--gold);"></div></div>
     </div>
@@ -1015,10 +1011,10 @@ function renderFilterChips(){
   const cats = [];
   ['receita','fixa','variavel'].forEach(t=>(data.categories[t]||[]).forEach(c=>{ if(cats.indexOf(c)===-1) cats.push(c); }));
   let html = `<button type="button" class="cat-chip ${!filterVal?'on':''}" data-f="all">Todas</button>`;
-  html += cats.map(c=>`<button type="button" class="cat-chip ${filterVal==='cat:'+c?'on':''}" data-f="cat:${c}"><span class="cdot" style="background:${colorForCategory(c)}"></span>${c}</button>`).join('');
+  html += cats.map(c=>`<button type="button" class="cat-chip ${filterVal==='cat:'+c?'on':''}" data-f="cat:${esc(c)}"><span class="cdot" style="background:${colorForCategory(c)}"></span>${esc(c)}</button>`).join('');
   if(data.cards.length){
     html += `<button type="button" class="cat-chip ${filterVal==='allcards'?'on':''}" data-f="allcards">💳 Todos os cartões</button>`;
-    html += data.cards.map(cd=>`<button type="button" class="cat-chip ${filterVal==='card:'+cd.id?'on':''}" data-f="card:${cd.id}">💳 ${cd.nome}</button>`).join('');
+    html += data.cards.map(cd=>`<button type="button" class="cat-chip ${filterVal==='card:'+cd.id?'on':''}" data-f="card:${cd.id}">💳 ${esc(cd.nome)}</button>`).join('');
   }
   box.innerHTML = html;
 }
@@ -1038,7 +1034,7 @@ function renderCardsSection(){
     return;
   }
   chipBox.innerHTML = `<button type="button" class="cat-chip ${cardFilterSel===null?'on':''}" data-cf="all">Todos os cartões</button>` +
-    data.cards.map(c=>`<button type="button" class="cat-chip ${cardFilterSel===c.id?'on':''}" data-cf="${c.id}">${c.nome}</button>`).join('');
+    data.cards.map(c=>`<button type="button" class="cat-chip ${cardFilterSel===c.id?'on':''}" data-cf="${c.id}">${esc(c.nome)}</button>`).join('');
 
   const isCardExpense = e => e.cartao && (e.type==='fixa' || e.type==='variavel');
   const selMatch = e => cardFilterSel===null ? true : e.cardId===cardFilterSel;
@@ -1070,7 +1066,7 @@ function renderCardsSection(){
 
   function barsHtml(arr){
     const max = Math.max(1, ...arr.map(x=>x.v));
-    return arr.map(x=>`<div class="hbar-row"><div class="hbar-top"><span>${x.nome}</span><span>${fmt(x.v)}</span></div><div class="hbar-track"><div class="hbar-fill" style="width:${x.v/max*100}%; background:${colorForCategory('card:'+x.id)};"></div></div></div>`).join('') || '<div class="empty">—</div>';
+    return arr.map(x=>`<div class="hbar-row"><div class="hbar-top"><span>${esc(x.nome)}</span><span>${fmt(x.v)}</span></div><div class="hbar-track"><div class="hbar-fill" style="width:${x.v/max*100}%; background:${colorForCategory('card:'+x.id)};"></div></div></div>`).join('') || '<div class="empty">—</div>';
   }
   const mesVals = data.cards.map(cd=>({ nome:cd.nome, id:cd.id, v: data.entries.filter(e=>isCardExpense(e) && e.cardId===cd.id && e.ym===nowYm).reduce((s,e)=>s+e.valor,0) + tpSum(cd.id, ym=>ym===nowYm) }));
   const anoVals = data.cards.map(cd=>({ nome:cd.nome, id:cd.id, v: data.entries.filter(e=>isCardExpense(e) && e.cardId===cd.id && e.ym.slice(0,4)===anoAtual).reduce((s,e)=>s+e.valor,0) + tpSum(cd.id, ym=>ym.slice(0,4)===anoAtual) }));
@@ -1124,7 +1120,7 @@ function render(){
     donut.style.background = `conic-gradient(${stops.join(',')})`;
     legend.innerHTML = cats.map(c=>{
       const pct = Math.round(byCat[c]/totD*100);
-      return `<div><span class="dot" style="background:${colorForCategory(c)}"></span>${pct}% ${c}</div>`;
+      return `<div><span class="dot" style="background:${colorForCategory(c)}"></span>${pct}% ${esc(c)}</div>`;
     }).join('');
   }
 
@@ -1158,7 +1154,7 @@ function render(){
       assetList.innerHTML = data.assets.map(a=>{
         const r = a.atual - a.investido;
         return `<div class="row">
-          <div><div class="desc">${a.nome}</div><div class="cat">Investido: ${fmt(a.investido)}</div></div>
+          <div><div class="desc">${esc(a.nome)}</div><div class="cat">Investido: ${fmt(a.investido)}</div></div>
           <div style="display:flex;align-items:center;">
             <div class="val ${r>=0?'pos':'neg'}">${fmt(a.atual)}</div>
             <button class="del" data-aid="${a.id}">✕</button>
@@ -1183,8 +1179,8 @@ function render(){
     const totGuardadoGoals = data.goals.reduce((s,g)=>s+g.guardado, 0);
     const patrimonio = saldoAcumulado + totAtual + totGuardadoGoals;
     geralExtra.innerHTML = `<div class="inv-cards">
-      <div class="card" style="background:linear-gradient(135deg,var(--sage),#4f7a5c); color:#0f1a12;">
-        <div class="label" style="opacity:.75;">Patrimônio total</div>
+      <div class="card" style="background:linear-gradient(135deg,var(--sage),#059669); color:#ffffff;">
+        <div class="label" style="color:#fff;opacity:.9" style="opacity:.75;">Patrimônio total</div>
         <div class="num" style="font-size:20px; font-weight:700;">${fmt(patrimonio)}</div>
       </div>
       <div class="card">
@@ -1199,7 +1195,7 @@ function render(){
     } else {
       list.innerHTML = items.map(e=>`
         <div class="row">
-          <div><div class="desc">${e.desc}</div><div class="cat">${e.categoria} · ${fmtDay(e.date)}${e.recurringId?' · 🔁':''}${e.cartao?' · 💳'+(cardName(e.cardId)?(' '+cardName(e.cardId)):''):''}${e.fromPatrimonio?' · 🏦':''}${e.isAporte?' · 📈':''}</div></div>
+          <div><div class="desc">${esc(e.desc)}</div><div class="cat">${esc(e.categoria)} · ${fmtDay(e.date)}${e.recurringId?' · 🔁':''}${e.cartao?' · 💳'+(cardName(e.cardId)?(' '+cardName(e.cardId)):''):''}${e.fromPatrimonio?' · 🏦':''}${e.isAporte?' · 📈':''}</div></div>
           <div style="display:flex;align-items:center;">
             <div class="val ${e.type==='receita'?'pos':'neg'}">${e.type==='receita'?'+':'-'} ${fmt(e.valor)}</div>
             <button class="edit" data-id="${e.id}">✎</button>
@@ -1220,7 +1216,7 @@ function render(){
       rl.style.display = 'block';
       rl.innerHTML = '<div class="chart-block" style="margin-bottom:0;"><h3>🔁 Recorrentes</h3>' + rules.map(r=>`
         <div class="row" style="padding:10px 0;">
-          <div><div class="desc">${r.desc}</div><div class="cat">${fmt(r.valor)} · todo dia ${r.day} · desde ${monthLabel(r.startYm)}</div></div>
+          <div><div class="desc">${esc(r.desc)}</div><div class="cat">${fmt(r.valor)} · todo dia ${r.day} · desde ${monthLabel(r.startYm)}</div></div>
           <button class="del" data-rid="${r.id}">✕</button>
         </div>`).join('') + '</div>';
     } else { rl.style.display = 'none'; rl.innerHTML = ''; }
@@ -1243,7 +1239,7 @@ function render(){
       document.getElementById('tabDonut').style.background = `conic-gradient(${stops.join(',')})`;
       document.getElementById('tabLegend').innerHTML = tabCats.sort((a,b)=>byCatTab[b]-byCatTab[a]).map(c=>{
         const pct = Math.round(byCatTab[c]/totTab*100);
-        return `<div><span class="dot" style="background:${colorForCategory(c)}"></span>${pct}% ${c}</div>`;
+        return `<div><span class="dot" style="background:${colorForCategory(c)}"></span>${pct}% ${esc(c)}</div>`;
       }).join('');
     }
 
@@ -1252,7 +1248,7 @@ function render(){
     } else {
       list.innerHTML = items.map(e=>`
         <div class="row">
-          <div><div class="desc">${e.desc}</div><div class="cat">${e.categoria} · ${fmtDay(e.date)}${e.recurringId?' · 🔁':''}${e.cartao?' · 💳'+(cardName(e.cardId)?(' '+cardName(e.cardId)):''):''}${e.fromPatrimonio?' · 🏦':''}${e.isAporte?' · 📈':''}</div></div>
+          <div><div class="desc">${esc(e.desc)}</div><div class="cat">${esc(e.categoria)} · ${fmtDay(e.date)}${e.recurringId?' · 🔁':''}${e.cartao?' · 💳'+(cardName(e.cardId)?(' '+cardName(e.cardId)):''):''}${e.fromPatrimonio?' · 🏦':''}${e.isAporte?' · 📈':''}</div></div>
           <div style="display:flex;align-items:center;">
             <div class="val ${e.type==='receita'?'pos':'neg'}">${e.type==='receita'?'+':'-'} ${fmt(e.valor)}</div>
             <button class="edit" data-id="${e.id}">✎</button>
@@ -1315,7 +1311,7 @@ let editingId = null;
 function fillCats(){
   const box = document.getElementById('catChips');
   const cats = data.categories[sheetType] || [];
-  box.innerHTML = cats.map(c=>`<button type="button" class="cat-chip" data-c="${c}"><span class="cdot" style="background:${colorForCategory(c)}"></span>${c}</button>`).join('');
+  box.innerHTML = cats.map(c=>`<button type="button" class="cat-chip" data-c="${esc(c)}"><span class="cdot" style="background:${colorForCategory(c)}"></span>${esc(c)}</button>`).join('');
   const hidden = document.getElementById('fCat');
   if(!hidden.value) hidden.value = cats[0] || '';
   syncChipSelection();
@@ -1648,7 +1644,7 @@ function fillCardChips(){
     document.getElementById('fCardId').value = '';
     return;
   }
-  box.innerHTML = data.cards.map(cd=>`<button type="button" class="cat-chip" data-cid="${cd.id}">${cd.nome}</button>`).join('');
+  box.innerHTML = data.cards.map(cd=>`<button type="button" class="cat-chip" data-cid="${cd.id}">${esc(cd.nome)}</button>`).join('');
   const hidden = document.getElementById('fCardId');
   if(!hidden.value) hidden.value = data.cards[0].id;
   syncCardChipSelection();
@@ -1724,7 +1720,7 @@ function renderGoals(){
       <div class="goal-row" data-gid="${g.id}" data-act="toggle">
         ${thumb}
         <div class="goal-body">
-          <div class="goal-top"><span>${g.nome}</span><span>
+          <div class="goal-top"><span>${esc(g.nome)}</span><span>
             <button class="gbtn gold" data-gid="${g.id}" data-act="contrib">＋</button>
             <button class="gbtn" data-gid="${g.id}" data-act="edit">✎</button>
             <button class="gbtn" data-gid="${g.id}" data-act="del">✕</button>
@@ -1735,7 +1731,7 @@ function renderGoals(){
       </div>
       <div class="goal-detail ${open?'open':''}">
         ${g.imagem ? `<img src="${g.imagem}">` : ''}
-        <div class="drow"><b>Nome:</b> ${g.nome}</div>
+        <div class="drow"><b>Nome:</b> ${esc(g.nome)}</div>
         <div class="drow"><b>Valor alvo:</b> ${fmt(g.alvo)}</div>
         <div class="drow"><b>Já guardado:</b> ${fmt(g.guardado)}</div>
         ${g.taxa ? `<div class="drow"><b>Taxa/rendimento:</b> ${g.taxa}</div>` : ''}
@@ -1970,7 +1966,7 @@ function calcObjetivo(){
 }
 function renderCalcGoals(){
   const sel = document.getElementById('obGoal'), prev = sel.value;
-  sel.innerHTML = '<option value="">Digitar manualmente</option>' + data.goals.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  sel.innerHTML = '<option value="">Digitar manualmente</option>' + data.goals.map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
   if(prev && data.goals.some(g=>String(g.id)===prev)) sel.value = prev;
   calcJuros(); calcObjetivo();
 }
@@ -2007,13 +2003,13 @@ function renderCatManage(){
     if(renamingCat===c){
       return `<div class="rename-row">
         <input class="renameInput" value="${c}">
-        <button class="gbtn gold" data-c="${c}" data-act="saverename">✓</button>
-        <button class="gbtn" data-c="${c}" data-act="cancelrename">✕</button>
+        <button class="gbtn gold" data-c="${esc(c)}" data-act="saverename">✓</button>
+        <button class="gbtn" data-c="${esc(c)}" data-act="cancelrename">✕</button>
       </div>`;
     }
     return `<div class="row" style="padding:10px 0;">
       <div style="display:flex;align-items:center;gap:8px;"><span class="cdot" style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${colorForCategory(c)}"></span>${c}</div>
-      <div><button class="gbtn" data-c="${c}" data-act="rename">✎</button><button class="gbtn" data-c="${c}" data-act="del">✕</button></div>
+      <div><button class="gbtn" data-c="${esc(c)}" data-act="rename">✎</button><button class="gbtn" data-c="${esc(c)}" data-act="del">✕</button></div>
     </div>`;
   }).join('') || '<div class="empty" style="padding:14px 0;">Nenhuma categoria ainda.</div>';
 }
@@ -2085,7 +2081,7 @@ function renderCardManage(){
   list.innerHTML = data.cards.map(cd=>{
     if(renamingCardId===cd.id){
       return `<div class="rename-row">
-        <input class="renameCardNome" value="${cd.nome}" style="flex:2;">
+        <input class="renameCardNome" value="${esc(cd.nome)}" style="flex:2;">
         <input class="renameCardLimite" type="text" inputmode="decimal" value="${cd.limite}" style="flex:1;">
         <input class="renameCardFechamento" type="number" inputmode="numeric" min="1" max="31" value="${cd.fechamento||''}" placeholder="Fecha dia" style="flex:1;">
         <input class="renameCardVencimento" type="number" inputmode="numeric" min="0" max="30" value="${cd.diasVencimento!=null?cd.diasVencimento:''}" placeholder="Venc. +dias" style="flex:1;">
@@ -2094,7 +2090,7 @@ function renderCardManage(){
       </div>`;
     }
     return `<div class="row" style="padding:10px 0;">
-      <div><div class="desc">${cd.nome}</div><div class="cat">Limite: ${fmt(cd.limite)}${cd.fechamento?' · Fecha dia '+cd.fechamento:''}${cd.diasVencimento!=null?' · Vence +'+cd.diasVencimento+'d':''}</div></div>
+      <div><div class="desc">${esc(cd.nome)}</div><div class="cat">Limite: ${fmt(cd.limite)}${cd.fechamento?' · Fecha dia '+cd.fechamento:''}${cd.diasVencimento!=null?' · Vence +'+cd.diasVencimento+'d':''}</div></div>
       <div><button class="gbtn" data-cid="${cd.id}" data-act="rename">✎</button><button class="gbtn" data-cid="${cd.id}" data-act="del">✕</button></div>
     </div>`;
   }).join('') || '<div class="empty" style="padding:14px 0;">Nenhum cartão ainda.</div>';
@@ -2179,7 +2175,7 @@ function openCoverSheet(){
   if(data.assets.length===0){
     box.innerHTML = '<div class="empty" style="padding:6px 0;">Nenhum investimento cadastrado ainda.</div>';
   } else {
-    box.innerHTML = data.assets.map(a=>`<button type="button" class="cat-chip" data-aid="${a.id}">${a.nome} (${fmt(a.atual)})</button>`).join('');
+    box.innerHTML = data.assets.map(a=>`<button type="button" class="cat-chip" data-aid="${a.id}">${esc(a.nome)} (${fmt(a.atual)})</button>`).join('');
     document.getElementById('covAssetId').value = data.assets[0].id;
   }
   syncCoverAssetSelection();
@@ -2291,7 +2287,7 @@ document.getElementById('tpDataReceber').addEventListener('input', ()=>{
 document.getElementById('tpData').addEventListener('change', suggestTpReceber);
 function fillTpCardChips(){
   const box = document.getElementById('tpCardChips');
-  box.innerHTML = '<button type="button" class="cat-chip" data-cid="">Nenhum</button>' + data.cards.map(cd=>`<button type="button" class="cat-chip" data-cid="${cd.id}">${cd.nome}</button>`).join('');
+  box.innerHTML = '<button type="button" class="cat-chip" data-cid="">Nenhum</button>' + data.cards.map(cd=>`<button type="button" class="cat-chip" data-cid="${cd.id}">${esc(cd.nome)}</button>`).join('');
   syncTpCardSelection();
 }
 function syncTpCardSelection(){
@@ -2414,7 +2410,7 @@ function renderDebts(){
     const restante = Math.max(0, dd.valorTotal - dd.parcelaValor*pago);
     const quitado = pago>=dd.parcelasTotal;
     return `<div class="goal">
-      <div class="goal-top"><span>${dd.nome} <span style="font-size:11px;color:var(--text-dim);">(${dd.tipo})</span></span><span>
+      <div class="goal-top"><span>${esc(dd.nome)} <span style="font-size:11px;color:var(--text-dim);">(${dd.tipo})</span></span><span>
         ${quitado?'':'<button class="gbtn gold" data-did="'+dd.id+'" data-act="pay">＋</button>'}
         <button class="gbtn" data-did="${dd.id}" data-act="edit">✎</button>
         <button class="gbtn" data-did="${dd.id}" data-act="del">✕</button>
